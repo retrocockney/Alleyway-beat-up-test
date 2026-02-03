@@ -1,158 +1,189 @@
-
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alleyway Beat Up - Level 1</title>
+
 <style>
-  body {
-    margin: 0;
-    background: #111;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    overflow: hidden;
-    font-family: 'Press Start 2P', cursive;
-    color: #fff;
-  }
-  #gameCanvas {
-    background: #222;
-    border: 3px solid #555;
-  }
-  #health-bar {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 200px;
-    height: 20px;
-    background: red;
-  }
-  #health-bar-inner {
-    height: 100%;
-    width: 100%;
-    background: green;
-  }
+body {
+  margin: 0;
+  background: #111;
+  overflow: hidden;
+  touch-action: none;
+  font-family: sans-serif;
+}
+
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #222;
+}
+
+.entity {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+}
+
+#player {
+  background: #4caf50;
+}
+
+.enemy {
+  background: #f44336;
+}
+
+#boss {
+  background: purple;
+  width: 60px;
+  height: 60px;
+}
+
+#healthContainer {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 200px;
+  height: 20px;
+  border: 2px solid white;
+}
+
+#healthBar {
+  height: 100%;
+  width: 100%;
+  background: lime;
+}
+
+#controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+}
+
+.control-btn {
+  background: #555;
+  color: white;
+  padding: 15px;
+  margin: 5px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+#punchBtn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: #ff3d00;
+}
 </style>
 </head>
-<body>
 
-<div id="health-bar">
-  <div id="health-bar-inner"></div>
+<body>
+<div id="game">
+
+  <div id="healthContainer">
+    <div id="healthBar"></div>
+  </div>
+
+  <div id="player" class="entity"></div>
+
+  <div class="entity enemy" style="left:300px; top:200px;"></div>
+  <div class="entity enemy" style="left:500px; top:300px;"></div>
+
+  <div id="boss" class="entity" style="left:700px; top:200px;"></div>
+
+  <div id="controls">
+    <div class="control-btn" id="up">↑</div>
+    <div class="control-btn" id="left">←</div>
+    <div class="control-btn" id="right">→</div>
+    <div class="control-btn" id="down">↓</div>
+  </div>
+
+  <div class="control-btn" id="punchBtn">PUNCH</div>
+
 </div>
-<canvas id="gameCanvas" width="600" height="400"></canvas>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const player = document.getElementById("player");
+const enemies = document.querySelectorAll(".enemy");
+const boss = document.getElementById("boss");
+const healthBar = document.getElementById("healthBar");
 
-// Player stats (Average stats)
-const player = {
-  x: 50,
-  y: 300,
-  width: 40,
-  height: 40,
-  color: 'blue',
-  speed: 2, // Average speed 50 (scaled down for canvas)
-  hp: 100
-};
+let playerHP = 100;
+let playerX = 100;
+let playerY = 100;
+let speed = 4;
 
-// Enemy stats
-const enemies = [
-  { x: 500, y: 100, width: 40, height: 40, color: 'red', hp: 50, damage: 5, speed: 1 }
-];
+function updatePlayer() {
+  player.style.left = playerX + "px";
+  player.style.top = playerY + "px";
+}
 
-// Mini-boss stats
-const miniBoss = {
-  x: 500,
-  y: 300,
-  width: 60,
-  height: 60,
-  color: 'orange',
-  hp: 100,
-  damage: 10,
-  speed: 0.8
-};
+updatePlayer();
 
-const keys = {};
-
-// Health bar
-const healthBarInner = document.getElementById('health-bar-inner');
-
-// Movement
-window.addEventListener('keydown', (e) => { keys[e.key] = true; });
-window.addEventListener('keyup', (e) => { keys[e.key] = false; });
-
-// Collision detection
-function isColliding(a, b) {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
+function rectsTouch(a, b) {
+  return !(
+    a.right < b.left ||
+    a.left > b.right ||
+    a.bottom < b.top ||
+    a.top > b.bottom
   );
 }
 
-function update() {
-  // Player movement
-  if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
-  if (keys['ArrowDown'] && player.y + player.height < canvas.height) player.y += player.speed;
-  if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-  if (keys['ArrowRight'] && player.x + player.width < canvas.width) player.x += player.speed;
-
-  // Enemy movement (chase player)
+function punch() {
   enemies.forEach(enemy => {
-    if (player.x < enemy.x) enemy.x -= enemy.speed;
-    if (player.x > enemy.x) enemy.x += enemy.speed;
-    if (player.y < enemy.y) enemy.y -= enemy.speed;
-    if (player.y > enemy.y) enemy.y += enemy.speed;
-
-    if (isColliding(player, enemy)) {
-      player.hp -= enemy.damage;
-      enemy.x += enemy.speed * 5; // push enemy back slightly after hit
-      if (player.hp < 0) player.hp = 0;
+    if (rectsTouch(player.getBoundingClientRect(), enemy.getBoundingClientRect())) {
+      enemy.remove();
     }
   });
 
-  // Mini-boss movement (chase player)
-  if (player.x < miniBoss.x) miniBoss.x -= miniBoss.speed;
-  if (player.x > miniBoss.x) miniBoss.x += miniBoss.speed;
-  if (player.y < miniBoss.y) miniBoss.y -= miniBoss.speed;
-  if (player.y > miniBoss.y) miniBoss.y += miniBoss.speed;
-
-  if (isColliding(player, miniBoss)) {
-    player.hp -= miniBoss.damage;
-    if (player.hp < 0) player.hp = 0;
+  if (rectsTouch(player.getBoundingClientRect(), boss.getBoundingClientRect())) {
+    boss.style.display = "none";
+    alert("Boss defeated! Level complete!");
   }
-
-  // Update health bar
-  healthBarInner.style.width = player.hp + '%';
-
-  draw();
-  if (player.hp > 0) requestAnimationFrame(update);
-  else alert('You died! Game over.');
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+/* Touch controls */
+document.getElementById("up").ontouchstart = () => playerY -= speed * 5;
+document.getElementById("down").ontouchstart = () => playerY += speed * 5;
+document.getElementById("left").ontouchstart = () => playerX -= speed * 5;
+document.getElementById("right").ontouchstart = () => playerX += speed * 5;
+document.getElementById("punchBtn").ontouchstart = punch;
 
-  // Draw player
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.width, player.height);
+/* Keyboard controls */
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowUp" || e.key === "w") playerY -= speed * 5;
+  if (e.key === "ArrowDown" || e.key === "s") playerY += speed * 5;
+  if (e.key === "ArrowLeft" || e.key === "a") playerX -= speed * 5;
+  if (e.key === "ArrowRight" || e.key === "d") playerX += speed * 5;
+  if (e.key === " ") punch();
+  updatePlayer();
+});
 
-  // Draw enemies
+/* Enemy damage loop */
+setInterval(() => {
   enemies.forEach(enemy => {
-    ctx.fillStyle = enemy.color;
-    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+    if (rectsTouch(player.getBoundingClientRect(), enemy.getBoundingClientRect())) {
+      playerHP -= 5;
+    }
   });
 
-  // Draw mini-boss
-  ctx.fillStyle = miniBoss.color;
-  ctx.fillRect(miniBoss.x, miniBoss.y, miniBoss.width, miniBoss.height);
-}
+  if (rectsTouch(player.getBoundingClientRect(), boss.getBoundingClientRect())) {
+    playerHP -= 8;
+  }
 
-update();
+  if (playerHP < 0) playerHP = 0;
+  healthBar.style.width = playerHP + "%";
+
+  if (playerHP === 0) {
+    alert("You got knocked out!");
+    location.reload();
+  }
+}, 800);
+
+setInterval(updatePlayer, 16);
 </script>
-
 </body>
 </html>
