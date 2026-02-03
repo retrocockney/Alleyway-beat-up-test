@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alleyway Beat Up - Level 1</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Press Start 2P', cursive;
+    color: #fff;
+  }
+  #gameCanvas {
+    background: #222;
+    border: 3px solid #555;
+  }
+  #health-bar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 200px;
+    height: 20px;
+    background: red;
+  }
+  #health-bar-inner {
+    height: 100%;
+    width: 100%;
+    background: green;
+  }
+</style>
+</head>
+<body>
+
+<div id="health-bar">
+  <div id="health-bar-inner"></div>
+</div>
+<canvas id="gameCanvas" width="600" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Player stats (Average stats)
+const player = {
+  x: 50,
+  y: 300,
+  width: 40,
+  height: 40,
+  color: 'blue',
+  speed: 2, // Average speed 50 (scaled down for canvas)
+  hp: 100
+};
+
+// Enemy stats
+const enemies = [
+  { x: 500, y: 100, width: 40, height: 40, color: 'red', hp: 50, damage: 5, speed: 1 }
+];
+
+// Mini-boss stats
+const miniBoss = {
+  x: 500,
+  y: 300,
+  width: 60,
+  height: 60,
+  color: 'orange',
+  hp: 100,
+  damage: 10,
+  speed: 0.8
+};
+
+const keys = {};
+
+// Health bar
+const healthBarInner = document.getElementById('health-bar-inner');
+
+// Movement
+window.addEventListener('keydown', (e) => { keys[e.key] = true; });
+window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+// Collision detection
+function isColliding(a, b) {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+function update() {
+  // Player movement
+  if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
+  if (keys['ArrowDown'] && player.y + player.height < canvas.height) player.y += player.speed;
+  if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+  if (keys['ArrowRight'] && player.x + player.width < canvas.width) player.x += player.speed;
+
+  // Enemy movement (chase player)
+  enemies.forEach(enemy => {
+    if (player.x < enemy.x) enemy.x -= enemy.speed;
+    if (player.x > enemy.x) enemy.x += enemy.speed;
+    if (player.y < enemy.y) enemy.y -= enemy.speed;
+    if (player.y > enemy.y) enemy.y += enemy.speed;
+
+    if (isColliding(player, enemy)) {
+      player.hp -= enemy.damage;
+      enemy.x += enemy.speed * 5; // push enemy back slightly after hit
+      if (player.hp < 0) player.hp = 0;
+    }
+  });
+
+  // Mini-boss movement (chase player)
+  if (player.x < miniBoss.x) miniBoss.x -= miniBoss.speed;
+  if (player.x > miniBoss.x) miniBoss.x += miniBoss.speed;
+  if (player.y < miniBoss.y) miniBoss.y -= miniBoss.speed;
+  if (player.y > miniBoss.y) miniBoss.y += miniBoss.speed;
+
+  if (isColliding(player, miniBoss)) {
+    player.hp -= miniBoss.damage;
+    if (player.hp < 0) player.hp = 0;
+  }
+
+  // Update health bar
+  healthBarInner.style.width = player.hp + '%';
+
+  draw();
+  if (player.hp > 0) requestAnimationFrame(update);
+  else alert('You died! Game over.');
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw player
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+
+  // Draw enemies
+  enemies.forEach(enemy => {
+    ctx.fillStyle = enemy.color;
+    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+  });
+
+  // Draw mini-boss
+  ctx.fillStyle = miniBoss.color;
+  ctx.fillRect(miniBoss.x, miniBoss.y, miniBoss.width, miniBoss.height);
+}
+
+update();
+</script>
+
+</body>
+</html>
